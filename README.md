@@ -7,35 +7,138 @@ Cybersecurity | Networkwalks
 |---|---|
 | **Pentester Name** | Genrei L. Bondoc |
 | **Program/Batch** | B082 |
-| **Date** | 06 September 2026 |
+| **Date** | 07 September 2026 |
 | **Modules Completed** | <br> Web Penetration Testing |
 | **Client/Target** | Mediroza General Hospital — `https://medirozahospital.com` |
 | **Permission Secured from Client?** | Yes |
-| **Engagement Type** | External Black-Box Web Application Penetration Test |
+| **Engagement Type** | Web Penetration Test |
 | **Testing Period** | Single session — approximately 1.5 hours |
 | **Overall Risk Rating** | 🔴 **CRITICAL** |
-| **Phases Covered** | Phase 1: Reconnaissance & Footprinting <br> Phase 2: Web Application Scanning & Discovery <br> Phase 3: Authentication & Authorization Testing <br> Phase 4: Vulnerability Exploitation & Data Exposure Assessment |
----
-
-## 1. Liability Disclaimer
-
-<p>All penetration-testing activities documented in this report were conducted only within the authorized scope of the engagement and in accordance with the applicable rules of engagement. The assessment was performed for authorized security testing and educational purposes. No denial-of-service or destructive testing was performed. Sensitive evidence obtained during testing was handled according to the engagement's data-handling requirements.</p>
-
-<p>The information contained in this report is confidential and is intended only for authorized client stakeholders and remediation personnel. Vulnerability details, evidence, and testing procedures must not be used against systems without explicit authorization. Unauthorized access, testing, disclosure, or misuse of security information may result in legal, financial, employment, or other consequences.</p>
 
 ---
 
-## 2. Introduction
+# 1. Executive Summary
 
-This report documents an external black-box penetration test conducted against the web presence of Mediroza General Hospital (`medirozahospital.com`). The assessment simulated an unauthenticated external attacker with no prior knowledge of the organization's internal environment.
+<p>A penetration test was conducted against the external web presence of Mediroza General Hospital (medirozahospital.com). The assessment simulated an unauthenticated remote attacker with no prior knowledge of the environment.  </p>
 
-The assessment covered reconnaissance, attack-surface mapping, authentication testing, input-validation testing, authorization testing, file-access testing, and controlled post-exploitation analysis. The objective was to determine whether publicly accessible weaknesses could be chained together to obtain unauthorized access to protected application resources and sensitive information.
+<p>The engagement resulted in complete compromise of the patient records system and the disclosure of confidential corporate and employee data. Multiple severe vulnerabilities were identified across the application, and every stage of the intended attack path — reconnaissance, authentication bypass, unauthorized access, and data exfiltration — was successfully executed.  </p>
 
-The assessment identified multiple critical security weaknesses, including a publicly accessible database backup, SQL injection in the patient authentication endpoint, broken access controls, insecure direct object references, weak PDF protection, directory listing, information disclosure, and username enumeration.
+---
 
-The testing demonstrated that several of these weaknesses could be combined into an attack path resulting in unauthorized access to confidential patient reports and exposure of sensitive employee and corporate information.
+<table>
+    <thead>
+        <tr>
+            <th>#</th>
+            <th>Milestone</th>
+            <th>Status</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td>1</td>
+            <td>External reconnaissance &amp; attack surface mapping</td>
+            <td>✅ Achieved</td>
+        </tr>
+        <tr>
+            <td>2</td>
+            <td>Discovery of publicly exposed database backup</td>
+            <td>✅ Achieved</td>
+        </tr>
+        <tr>
+            <td>3</td>
+            <td>Authentication bypass via SQL Injection</td>
+            <td>✅ Achieved</td>
+        </tr>
+        <tr>
+            <td>4</td>
+            <td>Unauthorized access to restricted patient portal</td>
+            <td>✅ Achieved</td>
+        </tr>
+        <tr>
+            <td>5</td>
+            <td>Exfiltration of 3 confidential pathology reports (PDF)</td>
+            <td>✅ Achieved</td>
+        </tr>
+        <tr>
+            <td>6</td>
+            <td>Offline cracking of PDF encryption password</td>
+            <td>✅ Achieved</td>
+        </tr>
+        <tr>
+            <td>7</td>
+            <td>Full decryption &amp; disclosure of patient medical record</td>
+            <td>✅ Achieved</td>
+        </tr>
+        <tr>
+            <td>8</td>
+            <td>Disclosure of all 30 employee salaries + national IDs</td>
+            <td>✅ Achieved</td>
+        </tr>
+        <tr>
+            <td>9</td>
+            <td>Disclosure of complete shareholder registry</td>
+            <td>✅ Achieved</td>
+        </tr>
+    </tbody>
+</table>
 
-All testing was performed during a single authorized session. Destructive testing and denial-of-service activities were excluded from the engagement.
+**The combination of findings exposes Mediroza to:**
+<ol>
+  <li><strong>Regulatory &amp; Legal Exposure (POPIA/HIPAA-equivalent breach)</strong> — Protected Health Information (PHI) of at least 3 patients was accessed without authorization. Under South Africa's Protection of Personal Information Act (POPIA) and the National Health Act, this constitutes a notifiable breach with potential penalties.</li>
+
+  <li><strong>Insider Tension &amp; HR Crisis</strong> — Publication of the complete payroll (R 1,998,000/month, 30 employees) and national IDs would cause significant internal unrest and is exploitable for social engineering.</li>
+
+  <li><strong>Corporate Espionage Material</strong> — The shareholder registry (10 shareholders, 1,000,000 shares) reveals the hospital's ownership structure, insider stakes, and preferential share arrangements — valuable to competitors and hostile actors.</li>
+
+  <li><strong>Complete Trust Erosion</strong> — A hospital's core business depends on patient trust. Public knowledge that lab results, medical conditions, and staff compensation are trivially obtainable would be commercially devastating.</li>
+</ol>
+
+**The attack chain required no credentials, no advanced tooling, and only standard utilities (curl, grep, sed, john, python3). Any motivated party — including automated scanners and commodity threat actors could replicate these results.**
+
+---
+# 2 — Scope and Methodology 
+## 2.1 Scope
+<table>
+  <thead>
+    <tr>
+      <th>Item</th>
+      <th>Detail</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>In-Scope Target</strong></td>
+      <td> https://medirozahospital.com (all paths)</td>
+    </tr>
+    <tr>
+      <td><strong>Out of Scope</strong></td>
+      <td>Physical security, social engineering, staff interviews, denial-of-service, and other domains/subdomains owned by the organization</td>
+    </tr>
+    <tr>
+      <td><strong>Authorization Level</strong></td>
+      <td>Full exploitation permitted up to and including data exfiltration (per engagement rules of engagement)</td>
+    </tr>
+    <tr>
+      <td><strong>Timing</strong></td>
+      <td>All testing performed in a single daytime session; destructive testing and DoS were not attempted</td>
+    </tr>
+  </tbody>
+</table>
+
+## 2.2 Limitations Encountered
+<table> <thead> <tr> <th>Limitation</th> <th>Impact</th> <th>Workaround</th> </tr> </thead> <tbody> <tr> <td> Rate limiting / WAF-style 403 responses on the patient login after rapid UNION SELECT testing </td> <td> Temporarily blocked SQLi column enumeration </td> <td> Slowed request cadence; pivoted to comment-termination payload (<code>admin'-- -</code>) which succeeded immediately </td> </tr> <tr> <td> Command environment shell pattern filter blocked certain piped command constructs </td> <td> Minor — required command splitting </td> <td> Split complex commands into sequential one-shot executions </td> </tr> <tr> <td> No shell/command-execution testing attempted (out of engagement focus) </td> <td> Potential additional vulnerabilities may exist in server-side file handling (download.php path traversal, LFI) — untested </td> <td> Flagged as recommended follow-up testing in §5 </td> </tr> <tr> <td> Staff login endpoint not brute-forced </td> <td> Staff-side credential strength unverified </td> <td> Flagged as recommended follow-up testing </td> </tr> </tbody> </table> <p> <strong>Note:</strong> All 403 responses observed were from LiteSpeed's rate-limiting, not a true WAF — the application itself performs no input filtering whatsoever. </p>
+
+## 2.3 Methodology
+**Testing followed a structured black-box methodology aligned with OWASP Web Security Testing Guide (OWASP WSTG v4.2):**
+
+<ol>
+  <li><strong>Reconnaissance (WSTG-INFO)</strong> — HTTP banner analysis, technology fingerprinting (LiteSpeed, PHP 8.2.33, Mediroza CMS 1.4.2), robots.txt/sitemap.xml review, endpoint discovery.</li>
+  <li><strong>Configuration &amp; Deployment Management (WSTG-CONF)</strong> — Directory listing enumeration, exposed file verification.</li>
+  <li><strong>Identity &amp; Authentication Testing (WSTG-ATHN/IDNT)</strong> — Credential injection, username enumeration via differential responses, authentication bypass.</li>
+  <li><strong>Input Validation Testing (WSTG-INPV)</strong> — SQL injection (authentication-based), UNION-based exploration, comment-termination payloads.</li>
+  <li><strong>Business Logic Testing (WSTG-BUSL)</strong> — Session authorization behavior on portal.php / download.php.</li>
+  <li><strong>Post-Exploitation / Data Analysis</strong> — Offline PDF password recovery, PHI extraction, SQL dump parsing and aggregation.</li>
+</ol>
 
 ---
 # M1 
@@ -103,8 +206,8 @@ The reconnaissance identified:
 These reconnaissance results established the target's domain, DNS, web, email, and network-service profile and provided the foundation for the subsequent phases of authorized security testing.
 
 ---
-
-# Finding 1: SQL Injection in Patient Portal Authentication                                                                                                                
+# 5. Findings
+## Finding 1: SQL Injection in Patient Portal Authentication                                                                                                                
 Location: POST /patient/login.php, parameter username Class: CWE-89 (SQL Injection) Severity Rating: 🔴 CRITICAL                                                        
 Description                                                                                                                                                             
 The patient login concatenates user input directly into a MySQL query without any parameterization, escaping, or prepared statements. Verbose error messages echo raw mysqli_query() SQL syntax errors back to unauthenticated users, confirming the injection point and leaking database structure.                                                                                                                                                                                                             
@@ -116,26 +219,25 @@ The patient login concatenates user input directly into a MySQL query without an
 
 <img width="1366" height="582" alt="3pdfs" src="https://github.com/user-attachments/assets/05df1a12-0a3e-410e-8b8c-5ef0a1558c8e" />
 
-## Finding 2: Unauthorized Access to Restricted Patient Portal (Broken Access Control)                                                                                    
-Location: GET /patient/portal.php (post-authentication) Class: CWE-287 (Improper Authentication), CWE-862 (Missing Authorization) Severity Rating: 🔴 CRITICAL           Description                                                                                                                                                               
-Following the SQL injection bypass, a valid PHP session (PHPSESSID) was issued. The portal then listed all lab reports available to the compromised account with direct download links.                      
-
-<img width="1641" height="274" alt="image" src="https://github.com/user-attachments/assets/bc0d25f0-bb69-4e94-ad77-763616a4f1bb" />
-
-# Finding 3: Unauthorized Access to Restricted Patient Portal (Broken Access Control)                                                                                     
+## Finding 2: Unauthorized Access to Restricted Patient Portal (Broken Access Control)                                                                                     
 Location: GET /patient/portal.php (post-authentication) Class: CWE-287 (Improper Authentication), CWE-862 (Missing Authorization) Severity Rating: 🔴 CRITICAL          Description                                                                                                                                                              
 Following the SQL injection bypass, a valid PHP session (PHPSESSID) was issued. The portal then listed all lab reports available to the compromised account with direct download links.  
-<img width="1634" height="271" alt="image" src="https://github.com/user-attachments/assets/d9aee5e7-3112-477a-b733-463c6ab5046a" />
 
-# Finding 4: Insecure Direct Object Reference (IDOR) on Report Download                                                                                                  
+<img width="1366" height="582" alt="Broken Access Control" src="https://github.com/user-attachments/assets/cba0d148-3e41-4ed5-899f-3503de8b149c" />
+
+**Note: The admin account appears to be an administrative/principal account whose report listing includes multiple patients — a horizontal/vertical authorization weakness in itself. A true patient account should see only its own reports.**
+
+## Finding 3: Insecure Direct Object Reference (IDOR) on Report Download                                                                                                  
 Location: GET /patient/download.php?id=<n> Class: CWE-639 (Authorization Bypass Through User-Controlled Key), CWE-22 (Path Traversal — suspected, untested) Severity Rating: 🔴 CRITICAL (confirmed)      
 untested potential for arbitrary file read                                                                                                                                Description                                                                                                                                                               
 Report downloads are keyed by a sequential integer id (1, 2, 3). With a hijacked session, all three reports were retrieved. Sequential IDs mean any patient's report is one URL edit away for any authenticated session. The ?file= parameter also appeared in testing (returned 302 unauthenticated) — path traversal/LFI on this endpoint is a likely follow-up finding. 
-<img width="933" height="291" alt="image" src="https://github.com/user-attachments/assets/867a7c7e-037d-4ac7-9619-5c63aa38a81d" />
+**command: curl -s -b /tmp/cookies.txt "https://medirozahospital.com/patient/portal.php"**
 
-## Finding 5: Weak PDF Encryption — Password Recoverable Offline 
+<img width="926" height="735" alt="IDOR" src="https://github.com/user-attachments/assets/c894a4ff-b8e4-430c-9ded-ee907949fda0" />
 
-One of the retrieved pathology reports was protected using legacy PDF encryption.
+## Finding 4: Weak PDF Encryption — Password Recoverable Offline 
+
+One of the retrieved pathology reports was protected using legacy PDF encryption. Severity Rating: 🔴 CRITICAL
 
 An offline password-strength assessment was performed against the authorized copy of the PDF. The password was recovered rapidly using a common dictionary, demonstrating that the protection depended on a trivially guessable password.
 
@@ -143,28 +245,31 @@ After the password was recovered, the PDF was successfully decrypted and its con
 
 ### Security Significance
 
-Encryption provides limited protection when the encryption password is weak and easily recoverable.
+Encryption provides limited protection when the encryption password is weak and easily recoverable. 
 
 The weakness is particularly significant because it was combined with the preceding unauthorized file-access issue. Once an encrypted document has been obtained, an easily guessable password can substantially reduce the effectiveness of the document's confidentiality control.
 
-### Severity
+## Finding 5: Directory Listing on Sensitive Application Folders                                                                                                          
+Location: /patient/, /old/, /_autoindex/ Class: CWE-548 (Exposure of Information Through Directory Listing), CWE-538 Severity Rating: 🟠 HIGH                             Description                                                                                                                                                               Multiple directories serve full autoindex listings, exposing application architecture, file inventory, and an active PHP error_log (242 KB) at /patient/error_log (contents access-blocked at time of test but its presence confirms ongoing error logging — a reconnaissance goldmine). 
 
-🔴 **CRITICAL**
+<img width="1772" height="895" alt="Directory Listing on Sensitive Application Folders" src="https://github.com/user-attachments/assets/d26078e0-0249-4b90-bcb2-d639c90b4101" />
 
+## Finding 6: Information Disclosure via Response Headers & Meta Tags                                                                                                   
+Location: All responses Class: CWE-200 (Exposure of Sensitive Information) Severity Rating: 🟡 MEDIUM                                                                    Description                                                                                                                                                               
+The application gratuitously fingerprints itself, aiding targeted exploitation.   
 
-## Overall Risk Assessment
+**Command: curl -s -i -L medirozahospital.com --max-time 30**
+<img width="621" height="522" alt="Information Disclosure via Response Headers   Meta Tags" src="https://github.com/user-attachments/assets/0f473fcc-db38-4cbf-8425-a3698e32ef0d" />
 
-The overall security posture identified during this assessment is rated **🔴 CRITICAL**.
+## Finding 7: Username Enumeration via Differential Error Messages                                                                                                         
+Location: POST /patient/login.php Class: CWE-204 (Observable Response Discrepancy) Severity Rating: 🟡 MEDIUM                                                           Description                                                                                                                                                             
+"Username not found" vs. "Incorrect password" responses allow an attacker to confirm valid account names without any credentials, then focus password attacks. Confirmed admin exists on the patient portal (questionable design — an administrative account on a patient-facing system).
 
-- The most significant concern is not any individual finding in isolation, but the ability to combine several weaknesses into a practical attack path.
-
-- This chain resulted in unauthorized exposure of sensitive healthcare, employee, and corporate information.
-
-- The findings should therefore be treated as an **incident-level security concern** rather than isolated configuration issues.
+<img width="1876" height="907" alt="Username Enumeration via Differential Error Messages" src="https://github.com/user-attachments/assets/ab10214d-d534-4dcf-b532-cc769a725cb9" />
 
 ---
 # M2
-###  Practical Modules
+## 6. Practical Modules
 | | |
 |---|---|
 | **Target files** | `patient_report_1.pdf`, `patient_report_2.pdf`, `patient_report_3.pdf` (password-protected) |
@@ -205,279 +310,97 @@ last step is to use john the ripper: john --format=PDF report3_hash_signed.txt :
 
 ---
 # M3
+## Finding 8: Publicly Exposed Database Backup (Directory Listing + Sensitive File in Web Root)                                                                            
+Location: https://medirozahospital.com/old/mediroza_db_backup_2019.sql Class: CWE-538 (File & Directory Information Exposure), CWE-200 (Exposure of Sensitive Information) Severity Rating: 🔴 CRITICAL
+Description                                                                                                                                                               
+The /old/ directory has directory listing (autoindex) enabled and contains an unencrypted 2019 HR database backup (6,346 bytes), freely downloadable without any authentication. The directory is even advertised in robots.txt (Disallow: /old/), serving as a roadmap for any attacker. 
 
-# 5. Recommendations
+<img width="801" height="527" alt="Publicly Exposed Database Backup" src="https://github.com/user-attachments/assets/933466fd-2385-4b6c-8052-6c87665b4fc7" />
 
-## 5.1 Immediate Remediation
+<img width="801" height="527" alt="Publicly Exposed Database Backup" src="https://github.com/user-attachments/assets/51b0c433-6f9c-49c3-bb09-6c29a39b1edf" />
 
-### Remove Exposed Sensitive Files
-- Remove the publicly accessible database backup and any other sensitive backups from all web-accessible directories.
-- Assume that publicly accessible information may already have been copied and conduct an appropriate exposure assessment.
-- Store backups outside the web root and restrict access using appropriate filesystem permissions.
+<img width="802" height="515" alt="Publicly Exposed Database Backup3" src="https://github.com/user-attachments/assets/fffa210f-6a9b-461f-a2f2-8d4c77daf17b" />
 
-### Disable Unnecessary Directory Indexing
-- Disable directory listing/autoindexing for sensitive application directories and any other directories that contain application files, reports, logs, or backups.
-- Verify that direct requests to sensitive directories do not disclose file names or application resources.
+<img width="802" height="515" alt="Publicly Exposed Database Backup3" src="https://github.com/user-attachments/assets/ee8af681-1b34-41a9-b4ff-59bd67483bb1" />
 
-### Secure the Authentication Process
-- Replace dynamically constructed SQL queries with parameterized queries or prepared statements.
-- Validate and sanitize user input at the application layer.
-- Use secure password hashing such as Argon2id or bcrypt for stored credentials.
-- Retest the patient login functionality to confirm that authentication bypass is no longer possible.
+# 6. Recommendations &amp; Remediation</h1>
 
-### Review and Invalidate Potentially Compromised Sessions
-- Invalidate active sessions created during the assessment where appropriate.
-- Review authentication and application logs for suspicious login activity.
-- Rotate credentials that may have been exposed or compromised.
+## Finding 1 — SQL Injection in Patient Portal Authentication (CRITICAL)</h2>
+<ul>
+  <li>Rewrite all database queries using <strong>parameterized queries / prepared statements</strong> (e.g., PDO with bound parameters or <code>mysqli_stmt</code>). Never concatenate user input into SQL strings.</li>
+  <li>Apply strict server-side input validation on the <code>username</code> and <code>password</code> fields (allow-list expected character sets; reject SQL metacharacters where not needed).</li>
+  <li>Disable verbose database error output in production (<code>display_errors = Off</code> in <code>php.ini</code>); log errors server-side only, never echo raw <code>mysqli_query()</code> errors to the client.</li>
+  <li>Run a full source-code audit of every form and endpoint in Mediroza CMS 1.4.2 for the same unparameterized-query pattern — this is rarely an isolated instance.</li>
+  <li>Deploy a properly configured WAF/ModSecurity rule set tuned for SQLi signatures as a compensating control, not a substitute for code-level fixes.</li>
+</ul>
 
-### Protect Application Logs
-- Move server-side logs outside the web root.
-- Prevent direct HTTP access to log files.
-- Review exposed logs for sensitive information, credentials, session identifiers, SQL errors, or other confidential data.
+## Finding 2 — Unauthorized Access to Restricted Patient Portal / Broken Access Control (CRITICAL)</h2>
+<ul>
+  <li>Enforce <strong>server-side authorization checks</strong> on every portal request — validate that the authenticated session's role and patient ID match the records being requested, not just that a session exists.</li>
+  <li>Remove or strictly scope the administrative account so it cannot be reached through the patient-facing login; separate staff/admin authentication onto a distinct, more hardened endpoint (ideally with MFA).</li>
+  <li>Implement role-based access control (RBAC) so a "patient" role can only ever query its own record set, enforced at the query layer (e.g., <code>WHERE patient_id = :session_patient_id</code>), not just hidden in the UI.</li>
+  <li>Add centralized session validation middleware rather than relying on per-page ad hoc checks.</li>
+</ul>
 
-### Begin a Formal Incident and Privacy Assessment
-- Because sensitive healthcare, employee, and corporate information was exposed during testing, conduct an appropriate legal, privacy, and incident-response assessment.
-- Determine whether any notification, containment, or additional investigation obligations apply under applicable laws and organizational policies.
+## Finding 3 — IDOR on Report Download (CRITICAL)</h2>
+<ul>
+  <li>Replace sequential integer <code>id</code> values with <strong>non-guessable, per-user opaque identifiers</strong> (UUIDs) or, better, server-side ownership checks that verify the requested report belongs to the requesting session before serving it.</li>
+  <li>Add authorization middleware to <code>download.php</code> that rejects any request where <code>report.patient_id != session.patient_id</code>.</li>
+  <li>Investigate and close the untested <code>?file=</code> parameter immediately — treat it as a suspected path traversal / LFI vector until proven otherwise; sanitize and canonicalize any file path input, and serve files from a locked-down directory outside the web root using an internal file reference rather than a user-supplied name/path.</li>
+  <li>Log and alert on sequential/out-of-range ID access attempts as a detection control.</li>
+</ul>
 
----
+## Finding 4 — Weak PDF Encryption / Recoverable Password (CRITICAL)</h2>
+<ul>
+  <li>Move away from static, human-chosen PDF passwords for PHI documents. Use strong, randomly generated, per-document passwords (16+ characters) issued through a secure delivery channel, or better, eliminate password-only protection in favor of authenticated, access-controlled document delivery (e.g., signed, expiring download links tied to a verified session).</li>
+  <li>Enforce a password policy that bans dictionary words (<code>123456</code>, <code>password</code>, common patterns) anywhere passwords are generated or accepted, including for internal document protection.</li>
+  <li>Consider AES-256 PDF encryption (modern <code>qpdf</code>/Acrobat standard) rather than legacy RC4/40–128-bit schemes, and disable legacy encryption support in whatever tool generates these reports.</li>
+  <li>Treat this as a compensating control only — the root fix is closing Finding 3 so encrypted files are never reachable by unauthorized users in the first place.</li>
+</ul>
 
-## 5.2 Short-Term Remediation
+## Finding 5 — Directory Listing on Sensitive Application Folders (HIGH)</h2>
+<ul>
+  <li>Disable directory autoindexing globally in the LiteSpeed/Apache config (<code>Options -Indexes</code>) and specifically for <code>/patient/</code>, <code>/old/</code>, <code>/_autoindex/</code>.</li>
+  <li>Remove the <code>/old/</code> directory and its contents from the web root entirely — legacy backups should never be stored inside a publicly reachable path; move to secured, non-web-accessible storage with access logging.</li>
+  <li>Relocate or restrict access to <code>error_log</code> files outside the web root; rotate and purge logs regularly, and ensure logs never capture sensitive query parameters or credentials.</li>
+  <li>Run a full inventory of the web root for other stale/legacy files (<code>.bak</code>, <code>.old</code>, <code>.sql</code>, <code>.zip</code>) and remove or relocate them.</li>
+</ul>
 
-### Implement Server-Side Authorization Checks
-- Every patient report request must verify that the authenticated user is authorized to access the requested record.
-- Do not rely solely on sequential report IDs or client-supplied parameters.
-- Enforce ownership checks on every report-view and report-download operation.
-- Retest the report-download functionality using multiple record identifiers to confirm that cross-patient access is prevented.
+## Finding 6 — Information Disclosure via Response Headers &amp; Meta Tags (MEDIUM)</h2>
+<ul>
+  <li>Strip or generalize identifying headers (<code>X-Powered-By</code>, <code>x-turbo-charged-by</code>, server version banners) at the web server/reverse-proxy level.</li>
+  <li>Remove CMS/version-revealing meta tags and generator tags from HTML source.</li>
+  <li>Adopt a standard secure-headers baseline: <code>Content-Security-Policy</code>, <code>X-Content-Type-Options: nosniff</code>, <code>X-Frame-Options</code>, <code>Referrer-Policy</code>, <code>Strict-Transport-Security</code>.</li>
+</ul>
 
-### Separate Patient and Administrative Authentication
-- Patient and administrative users should use separate authentication and authorization pathways where appropriate.
-- Apply role-based access control to administrative functionality.
-- Ensure that successful authentication does not automatically grant access to resources outside the user's assigned role.
+## Finding 7 — Username Enumeration via Differential Error Messages (MEDIUM)</h2>
+<ul>
+  <li>Return a single, generic authentication error (e.g., "Invalid username or password") for both invalid-username and invalid-password cases.</li>
+  <li>Apply consistent response timing/behavior regardless of whether the username exists, to prevent timing-based enumeration.</li>
+  <li>Implement account lockout / progressive throttling and CAPTCHA after repeated failed login attempts from the same source.</li>
+  <li>Reassess whether an administrative account should exist on a patient-facing login at all (see Finding 2).</li>
+</ul>
 
-### Prevent Username Enumeration
-- Replace differentiated login responses with a consistent message such as:
-  - `Invalid username or password.`
-- Ensure that response status, timing, and page behavior do not unnecessarily reveal whether an account exists.
-
-### Improve Document Encryption
-- Replace legacy PDF encryption with modern encryption mechanisms supported by the document-delivery workflow.
-- Use strong, randomly generated passwords when password-protected document delivery is required.
-- Avoid predictable, reused, or easily guessable document passwords.
-
-### Implement Authentication Rate Limiting
-- Add account- and IP-based rate limiting to authentication endpoints.
-- Implement temporary lockout or progressive delays after repeated failed authentication attempts.
-- Monitor repeated authentication failures for potential automated attacks.
-
-### Review Public DNS and Email Configuration
-- Review the exposed DNS, MX, SPF, DMARC, and SRV records and remove records that are unnecessary.
-- Consider strengthening the DMARC policy from monitoring mode (`p=none`) after validating legitimate mail flows.
-- Confirm that exposed FTP, SMTP, POP3, IMAP, and other services are required and securely configured.
-
-### Review `robots.txt`
-- Do not rely on `robots.txt` to protect sensitive directories.
-- Sensitive resources must be protected through authentication, authorization, and server-side access controls.
-
----
-
-## 5.3 Medium-Term Security Improvements
-
-### Establish a Secure Software Development Lifecycle
-- Introduce security-focused code reviews, SAST, DAST, dependency scanning, and penetration testing before production deployment.
-- Include OWASP Top 10 and OWASP WSTG-based security checks in the development lifecycle.
-- Specifically test authentication, authorization, IDOR, SQL injection, file access, and sensitive-data exposure.
-
-### Apply Least Privilege to Database Accounts
-- The application's database account should have only the privileges required for normal application operation.
-- Avoid unnecessary administrative database privileges.
-- Separate application and administrative database accounts where practical.
-
-### Implement Data Classification Controls
-- Classify patient, employee, identification, payroll, and corporate information as sensitive.
-- Prohibit sensitive records and database backups from being stored in publicly accessible web directories.
-- Encrypt sensitive data and backups at rest and restrict access based on business need.
-
-### Secure the Exposed Network Services
-- Review the externally accessible FTP, SMTP, DNS, POP3, IMAP, and HAProxy services identified during Nmap scanning.
-- Disable services that are not required.
-- Restrict administrative or internal services through firewall rules, access-control lists, or network segmentation.
-- Verify that all exposed services are running supported and appropriately configured versions.
-
-### Minimize Technology Fingerprinting
-- Avoid unnecessarily exposing server, application, framework, CMS, and organizational metadata.
-- Review response headers and error pages for unnecessary technical information.
-- Ensure that security headers are appropriately configured.
-
-### Centralize Security Logging and Monitoring
-- Monitor authentication failures, unusual report requests, sensitive-file requests, SQL errors, directory enumeration, and abnormal download activity.
-- Establish alerts for repeated authentication failures and unusual access to patient records.
-- Retain security logs securely outside the web root.
-
-### Develop an Incident-Response Procedure
-- Establish procedures for identifying, containing, investigating, documenting, and responding to potential patient or employee information exposure.
-- Define responsibilities for technical, management, privacy, legal, and security personnel.
-
-### Perform a Complete Remediation Retest
-- Retest the identified critical and high-risk attack paths after remediation.
-- Verify that SQL injection, authentication bypass, unauthorized record access, IDOR, sensitive-file exposure, directory listing, and weak document protection can no longer be reproduced.
-- Conduct additional authorized testing for areas that were not fully assessed during the initial engagement, including path traversal/LFI, staff authentication security, session-cookie security, and TLS configuration.
+## Finding 8 — Publicly Exposed Database Backup (CRITICAL)</h2>
+<ul>
+  <li>Immediately remove <code>mediroza_db_backup_2019.sql</code> and any other database dumps from the web-accessible file system.</li>
+  <li>Never rely on <code>robots.txt Disallow</code> as an access control — it is advisory only for well-behaved crawlers and effectively signposts sensitive paths to attackers. Enforce actual authentication/network-level restrictions on any path that must remain reachable.</li>
+  <li>Establish a backup handling policy: backups are encrypted at rest, stored outside the web root (or off-host, e.g., in access-controlled cloud storage), and access is logged and reviewed.</li>
+  <li>Since this backup contained HR/employee data, treat it as a confirmed breach of employee PII — begin incident response and notification procedures in parallel with technical remediation.</li>
+</ul>
 
 ---
-
-# 6. Conclusion
-
-- During this external penetration-testing assessment of Mediroza General Hospital, multiple security weaknesses were identified across the organization's publicly accessible web application and supporting infrastructure.
-
-- The assessment began with reconnaissance and attack-surface mapping using WHOIS, WhatWeb, Nslookup, Curl, Wafw00f, DNSRecon, and Nmap. This identified the target's domain and DNS infrastructure, web technologies, detected LiteSpeed protection, email infrastructure, and multiple externally accessible network services.
-
-- Subsequent application security testing identified critical weaknesses in authentication and authorization, including SQL injection in the patient login process, unauthorized access to the patient portal, and insecure direct object references in the report-download functionality.
-
-- The publicly accessible database backup represented an additional critical exposure because it contained sensitive organizational information. The combination of exposed data, authentication weaknesses, and inadequate access controls significantly increased the potential impact of the assessment findings.
-
-- The assessment also demonstrated that legacy PDF encryption combined with a weak and rapidly recoverable password could further reduce the confidentiality of protected medical documents after unauthorized acquisition.
-
-- The most serious findings were the **publicly accessible database backup, SQL injection in the patient authentication process, broken access control, and IDOR in report retrieval**. These weaknesses could be chained into a practical attack path resulting in unauthorized access to confidential patient and organizational information.
-
-- The assessment demonstrates that security controls must operate as a defense-in-depth system. Authentication alone is insufficient when SQL injection can bypass the authentication mechanism, and authentication is insufficient when server-side authorization does not restrict users to their own records.
-
-- The highest priority should therefore be given to removing publicly accessible sensitive files, correcting the SQL injection vulnerability, implementing strict server-side authorization, disabling directory indexing, protecting application logs, securing document encryption, and reviewing exposed network services.
-
-- Because the assessment involved the exposure of sensitive healthcare and organizational information, the findings should be treated as an **incident-level security concern** and should undergo an appropriate privacy, legal, and incident-response assessment.
-
-- After remediation, a complete authorized retest should be performed to verify that the identified attack paths have been eliminated and that the affected application and supporting infrastructure no longer expose the same weaknesses.
-
-- All penetration-testing activities documented in this report were conducted within the defined authorized scope and were intended to identify security weaknesses so that appropriate corrective measures could be implemented.
-
-# 7. Evidence Collected
-## 7.1 Reconnaissance Evidence
-
-### Task 1 — HTTP/HTTPS Reconnaissance
-
-curl -s -i http://medirozahospital.com
-curl -s -i -L https://medirozahospital.com
-
-Observed: HTTP redirection, LiteSpeed infrastructure, PHP and CMS information.
-
-### Task 2 — robots.txt Review
-
-curl -s -i https://medirozahospital.com/robots.txt
-
-Observed: References to sensitive application paths including /patient/, /staff/, and /old/.
-
-## 7.2 Public Database Backup Evidence
-
-### Task 3 — Directory Enumeration
-
-curl -s -i https://medirozahospital.com/old/
-
-Observed:
-
-Index of /old/
-mediroza_db_backup_2019.sql
-
-The database backup contained employee and shareholder information and was accessible without authentication.
-
-## 7.3 Authentication Testing Evidence
-
-### Task 4 — Patient Authentication Testing
-
-The patient login endpoint was tested using controlled input-validation cases.
-
-Observed: SQL-related error disclosure and differential authentication responses.
-
-The testing subsequently demonstrated that the authentication mechanism could be bypassed, resulting in an authenticated session.
-
-## 7.4 Patient Portal Evidence
-
-### Task 5 — Authenticated Portal Review
-
-Following successful authentication testing, the patient portal was accessed using the authorized test session.
-
-Observed: Multiple pathology reports associated with different patients were presented through the portal.
-
-## 7.5 Report Download Evidence
-
-### Task 6 — Object-Level Authorization Testing
-
-The report-download functionality was assessed to determine whether access controls were enforced for individual report objects.
-
-Observed: Multiple report objects could be retrieved through the authenticated test session, demonstrating insufficient object-level authorization.
-
-## 7.6 PDF Security Evidence
-
-### Task 7 — PDF Password Assessment
-
-The authorized encrypted PDF sample was analyzed offline to assess the strength of its password protection.
-
-Observed: The password was recovered rapidly using a common dictionary, demonstrating inadequate password strength.
-
-The recovered password was used only for the authorized assessment and validation of the document-protection finding.
-
-## 7.7 Directory Listing Evidence
-
-### Task 8 — Sensitive Directory Review
-
-The following paths were reviewed:
-
-/patient/
-/old/
-/_autoindex/
-
-Observed: Application files, report functionality, login/logout resources, and a server-side error log were exposed through directory indexing.
-
-## 8. Attack Path Summary
-
-The principal attack path identified during the assessment can be summarized as follows:
-
-External Reconnaissance
-        ↓
-Public Directory Discovery
-        ↓
-Sensitive Database Backup Exposure
-        ↓
-Authentication Endpoint Testing
-        ↓
-SQL Injection / Authentication Bypass
-        ↓
-Authenticated Patient Portal Access
-        ↓
-Insufficient Authorization
-        ↓
-Cross-Patient Report Access
-        ↓
-Protected PDF Retrieval
-        ↓
-Offline Password-Strength Assessment
-        ↓
-Confidential Medical Information Exposure
-
-This chain demonstrates how individually addressable weaknesses can combine to create a significantly greater overall security impact.
-
-## 9. Evidence Inventory
-Artifact	Purpose	Status
-Database backup	Evidence for Finding 1	Retained securely under engagement controls
-Pathology Report 1	Evidence for report-access testing	Retained securely
-Pathology Report 2	Evidence for report-access testing	Retained securely
-Pathology Report 3	Evidence for PDF-security testing	Retained securely
-Decrypted test document	Evidence for Finding 5	Retained securely and access restricted
-PDF password hash	Evidence for password-strength assessment	Retained securely
-Session evidence	Evidence of authentication behavior	Session invalidated after testing
-HTTP responses	Reconnaissance and vulnerability evidence	Retained as assessment evidence
-
-All sensitive evidence should remain within the authorized evidence store and should be securely destroyed according to the engagement's data-retention and client sign-off requirements.
-
-## 10. Note on Sensitive Information
-
-For privacy and security reasons, sensitive patient, employee, identification, salary, authentication-session, and corporate information should be redacted from publicly distributed copies of this report.
-
-The full technical evidence should be restricted to authorized client stakeholders, security personnel, legal/privacy personnel, and designated remediation owners.
 
 # 👤 Author
 
-### Genrei L. Bondoc
-### Cybersecurity / Ethical Hacking Intern
-### Networkwalks — Batch B082
-### Report End — CONFIDENTIAL
+**Genrei L. Bondoc**
 
-### Prepared by the authorized penetration-testing team — 06 September 2026
-### This document contains confidential vulnerability and security-assessment information. Distribution should be restricted to authorized client stakeholders, security personnel, and remediation owners.
+**Cybersecurity / Ethical Hacking Intern**
+
+**Networkwalks — Batch B082**
+
+**Report End — CONFIDENTIAL**
+
+**Prepared by the authorized penetration-testing team — 07 September 2026**
+
+**This document contains confidential vulnerability and security-assessment information. Distribution should be restricted to authorized client stakeholders, security personnel, and remediation owners.**
