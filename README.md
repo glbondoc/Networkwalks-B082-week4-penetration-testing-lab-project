@@ -163,84 +163,169 @@ After the password was recovered, the PDF was successfully decrypted and its con
 Encryption provides limited protection when the encryption password is weak and easily recoverable.
 
 The weakness is particularly significant because it was combined with the preceding unauthorized file-access issue. Once an encrypted document has been obtained, an easily guessable password can substantially reduce the effectiveness of the document's confidentiality control.
+<img width="1366" height="582" alt="3pdfs" src="https://github.com/user-attachments/assets/05df1a12-0a3e-410e-8b8c-5ef0a1558c8e" />
 
 ### Severity
 
-🟠 **High**
+🔴 **CRITICAL**
 
 
 ## Overall Risk Assessment
 
 The overall security posture identified during this assessment is rated **🔴 CRITICAL**.
 
-The most significant concern is not any individual finding in isolation, but the ability to combine several weaknesses into a practical attack path.
+- The most significant concern is not any individual finding in isolation, but the ability to combine several weaknesses into a practical attack path.
 
-The assessment demonstrated a progression from:
+- This chain resulted in unauthorized exposure of sensitive healthcare, employee, and corporate information.
 
-**Reconnaissance → Sensitive File Discovery → Authentication Weakness → Unauthorized Portal Access → Report Access → Weak Document Protection**
-
-This chain resulted in unauthorized exposure of sensitive healthcare, employee, and corporate information.
-
-The findings should therefore be treated as an **incident-level security concern** rather than isolated configuration issues.
+- The findings should therefore be treated as an **incident-level security concern** rather than isolated configuration issues.
 
 ---
 
-# 6. Recommendations
+# 5. Recommendations
 
-## 6.1 Immediate Remediation
+## 5.1 Immediate Remediation
 
-- Remove the Exposed Database Backup
-- Remove the SQL backup and any other sensitive backups from all web-accessible directories. Assume that publicly accessible information may already have been copied.
-- Disable directory indexing
-- Disable autoindexing for /old/, /patient/, /_autoindex/, and other application directories.
-- Secure the authentication process
+### Remove Exposed Sensitive Files
+- Remove the publicly accessible database backup and any other sensitive backups from all web-accessible directories.
+- Assume that publicly accessible information may already have been copied and conduct an appropriate exposure assessment.
+- Store backups outside the web root and restrict access using appropriate filesystem permissions.
+
+### Disable Unnecessary Directory Indexing
+- Disable directory listing/autoindexing for sensitive application directories and any other directories that contain application files, reports, logs, or backups.
+- Verify that direct requests to sensitive directories do not disclose file names or application resources.
+
+### Secure the Authentication Process
 - Replace dynamically constructed SQL queries with parameterized queries or prepared statements.
-- Review and invalidate potentially compromised sessions
-- Invalidate active sessions and review authentication logs for suspicious activity.
-- Protect application logs
-- Move server-side logs outside the web root and ensure that log files cannot be directly accessed through HTTP.
-- Begin a formal breach-impact assessment
-- Because healthcare and employee information was exposed during testing, the organization should conduct an appropriate legal, privacy, and incident-response assessment.
-## 6.2 Short-Term Remediation
-- Implement server-side authorization checks
-- Every report request should verify that the authenticated user is authorized to access the requested record.
-- Separate patient and administrative authentication
-- Administrative accounts should not use the same authentication pathway as ordinary patient accounts.
-- Use generic authentication error messages
-- Replace differentiated login responses with a consistent message such as:
-- Invalid username or password.
-- Improve document encryption
-- Use modern PDF encryption and strong, randomly generated passwords where password-protected document delivery is required.
-- Remove unnecessary technology fingerprinting
-- Avoid exposing unnecessary server, PHP, CMS, and organizational metadata.
-- Implement authentication rate limiting
-- Add account/IP-based rate limiting and temporary lockout controls to reduce automated authentication attacks.
-Review robots.txt
-- Do not rely on robots.txt to protect sensitive directories. Sensitive resources must be protected through authentication and authorization controls.
-## 6.3 Medium-Term Security Improvements
-- Establish a Secure Software Development Lifecycle
-- Introduce security-focused code reviews, SAST, DAST, dependency scanning, and security testing before production deployment.
-- Apply least privilege to database accounts
-- The web application's database account should have only the privileges required for normal application operation.
-- Implement data-classification controls
-- Employee, medical, identification, and shareholder information should be classified as sensitive and prohibited from web-accessible storage.
-- Centralize security logging and monitoring
-- Monitor authentication failures, unusual report requests, sensitive-file requests, SQL errors, and directory enumeration.
-- Develop an incident-response procedure
-- Establish procedures for identifying, containing, investigating, and reporting potential exposure of patient and employee information.
-- Perform a complete remediation retest
-- After remediation, retest all eight findings and verify that the identified attack paths can no longer be reproduced.
-# 7. Conclusion
-- During this external penetration-testing assessment of Mediroza General Hospital, multiple security weaknesses were identified across the organization's publicly accessible web application.
-- The assessment began with reconnaissance and attack-surface discovery, which revealed publicly accessible application directories and a sensitive database backup. Subsequent security testing identified weaknesses in authentication, input validation, authorization, object-level access control, document protection, directory configuration, and information disclosure.
-The most serious findings were the publicly accessible database backup, SQL injection in the patient login, broken access control, and IDOR in the report-download functionality. These weaknesses could be chained together to obtain unauthorized access to confidential patient records.
-- The assessment also demonstrated that legacy document encryption and weak passwords could further reduce the effectiveness of confidentiality controls after protected files had been obtained.
-- Overall, the findings demonstrate that security controls must be implemented as a complete defense-in-depth system. Authentication alone is insufficient when SQL injection can bypass it, and authentication is insufficient when authorization checks do not restrict access to individual records.
-- The highest priority should therefore be given to removing publicly exposed sensitive files, fixing SQL injection, implementing strict server-side authorization, disabling directory indexing, protecting logs, and conducting an appropriate incident-response and privacy assessment.
-- Most importantly, all penetration-testing activities must remain within an explicitly authorized scope. The testing documented in this report was conducted under the defined engagement rules and was intended to identify weaknesses so that appropriate corrective measures could be implemented.
+- Validate and sanitize user input at the application layer.
+- Use secure password hashing such as Argon2id or bcrypt for stored credentials.
+- Retest the patient login functionality to confirm that authentication bypass is no longer possible.
 
-# 8. Evidence Collected
-## 8.1 Reconnaissance Evidence
+### Review and Invalidate Potentially Compromised Sessions
+- Invalidate active sessions created during the assessment where appropriate.
+- Review authentication and application logs for suspicious login activity.
+- Rotate credentials that may have been exposed or compromised.
+
+### Protect Application Logs
+- Move server-side logs outside the web root.
+- Prevent direct HTTP access to log files.
+- Review exposed logs for sensitive information, credentials, session identifiers, SQL errors, or other confidential data.
+
+### Begin a Formal Incident and Privacy Assessment
+- Because sensitive healthcare, employee, and corporate information was exposed during testing, conduct an appropriate legal, privacy, and incident-response assessment.
+- Determine whether any notification, containment, or additional investigation obligations apply under applicable laws and organizational policies.
+
+---
+
+## 5.2 Short-Term Remediation
+
+### Implement Server-Side Authorization Checks
+- Every patient report request must verify that the authenticated user is authorized to access the requested record.
+- Do not rely solely on sequential report IDs or client-supplied parameters.
+- Enforce ownership checks on every report-view and report-download operation.
+- Retest the report-download functionality using multiple record identifiers to confirm that cross-patient access is prevented.
+
+### Separate Patient and Administrative Authentication
+- Patient and administrative users should use separate authentication and authorization pathways where appropriate.
+- Apply role-based access control to administrative functionality.
+- Ensure that successful authentication does not automatically grant access to resources outside the user's assigned role.
+
+### Prevent Username Enumeration
+- Replace differentiated login responses with a consistent message such as:
+  - `Invalid username or password.`
+- Ensure that response status, timing, and page behavior do not unnecessarily reveal whether an account exists.
+
+### Improve Document Encryption
+- Replace legacy PDF encryption with modern encryption mechanisms supported by the document-delivery workflow.
+- Use strong, randomly generated passwords when password-protected document delivery is required.
+- Avoid predictable, reused, or easily guessable document passwords.
+
+### Implement Authentication Rate Limiting
+- Add account- and IP-based rate limiting to authentication endpoints.
+- Implement temporary lockout or progressive delays after repeated failed authentication attempts.
+- Monitor repeated authentication failures for potential automated attacks.
+
+### Review Public DNS and Email Configuration
+- Review the exposed DNS, MX, SPF, DMARC, and SRV records and remove records that are unnecessary.
+- Consider strengthening the DMARC policy from monitoring mode (`p=none`) after validating legitimate mail flows.
+- Confirm that exposed FTP, SMTP, POP3, IMAP, and other services are required and securely configured.
+
+### Review `robots.txt`
+- Do not rely on `robots.txt` to protect sensitive directories.
+- Sensitive resources must be protected through authentication, authorization, and server-side access controls.
+
+---
+
+## 5.3 Medium-Term Security Improvements
+
+### Establish a Secure Software Development Lifecycle
+- Introduce security-focused code reviews, SAST, DAST, dependency scanning, and penetration testing before production deployment.
+- Include OWASP Top 10 and OWASP WSTG-based security checks in the development lifecycle.
+- Specifically test authentication, authorization, IDOR, SQL injection, file access, and sensitive-data exposure.
+
+### Apply Least Privilege to Database Accounts
+- The application's database account should have only the privileges required for normal application operation.
+- Avoid unnecessary administrative database privileges.
+- Separate application and administrative database accounts where practical.
+
+### Implement Data Classification Controls
+- Classify patient, employee, identification, payroll, and corporate information as sensitive.
+- Prohibit sensitive records and database backups from being stored in publicly accessible web directories.
+- Encrypt sensitive data and backups at rest and restrict access based on business need.
+
+### Secure the Exposed Network Services
+- Review the externally accessible FTP, SMTP, DNS, POP3, IMAP, and HAProxy services identified during Nmap scanning.
+- Disable services that are not required.
+- Restrict administrative or internal services through firewall rules, access-control lists, or network segmentation.
+- Verify that all exposed services are running supported and appropriately configured versions.
+
+### Minimize Technology Fingerprinting
+- Avoid unnecessarily exposing server, application, framework, CMS, and organizational metadata.
+- Review response headers and error pages for unnecessary technical information.
+- Ensure that security headers are appropriately configured.
+
+### Centralize Security Logging and Monitoring
+- Monitor authentication failures, unusual report requests, sensitive-file requests, SQL errors, directory enumeration, and abnormal download activity.
+- Establish alerts for repeated authentication failures and unusual access to patient records.
+- Retain security logs securely outside the web root.
+
+### Develop an Incident-Response Procedure
+- Establish procedures for identifying, containing, investigating, documenting, and responding to potential patient or employee information exposure.
+- Define responsibilities for technical, management, privacy, legal, and security personnel.
+
+### Perform a Complete Remediation Retest
+- Retest the identified critical and high-risk attack paths after remediation.
+- Verify that SQL injection, authentication bypass, unauthorized record access, IDOR, sensitive-file exposure, directory listing, and weak document protection can no longer be reproduced.
+- Conduct additional authorized testing for areas that were not fully assessed during the initial engagement, including path traversal/LFI, staff authentication security, session-cookie security, and TLS configuration.
+
+---
+
+# 6. Conclusion
+
+- During this external penetration-testing assessment of Mediroza General Hospital, multiple security weaknesses were identified across the organization's publicly accessible web application and supporting infrastructure.
+
+- The assessment began with reconnaissance and attack-surface mapping using WHOIS, WhatWeb, Nslookup, Curl, Wafw00f, DNSRecon, and Nmap. This identified the target's domain and DNS infrastructure, web technologies, detected LiteSpeed protection, email infrastructure, and multiple externally accessible network services.
+
+- Subsequent application security testing identified critical weaknesses in authentication and authorization, including SQL injection in the patient login process, unauthorized access to the patient portal, and insecure direct object references in the report-download functionality.
+
+- The publicly accessible database backup represented an additional critical exposure because it contained sensitive organizational information. The combination of exposed data, authentication weaknesses, and inadequate access controls significantly increased the potential impact of the assessment findings.
+
+- The assessment also demonstrated that legacy PDF encryption combined with a weak and rapidly recoverable password could further reduce the confidentiality of protected medical documents after unauthorized acquisition.
+
+- The most serious findings were the **publicly accessible database backup, SQL injection in the patient authentication process, broken access control, and IDOR in report retrieval**. These weaknesses could be chained into a practical attack path resulting in unauthorized access to confidential patient and organizational information.
+
+- The assessment demonstrates that security controls must operate as a defense-in-depth system. Authentication alone is insufficient when SQL injection can bypass the authentication mechanism, and authentication is insufficient when server-side authorization does not restrict users to their own records.
+
+- The highest priority should therefore be given to removing publicly accessible sensitive files, correcting the SQL injection vulnerability, implementing strict server-side authorization, disabling directory indexing, protecting application logs, securing document encryption, and reviewing exposed network services.
+
+- Because the assessment involved the exposure of sensitive healthcare and organizational information, the findings should be treated as an **incident-level security concern** and should undergo an appropriate privacy, legal, and incident-response assessment.
+
+- After remediation, a complete authorized retest should be performed to verify that the identified attack paths have been eliminated and that the affected application and supporting infrastructure no longer expose the same weaknesses.
+
+- All penetration-testing activities documented in this report were conducted within the defined authorized scope and were intended to identify security weaknesses so that appropriate corrective measures could be implemented.
+
+# 7. Evidence Collected
+## 7.1 Reconnaissance Evidence
 
 ### Task 1 — HTTP/HTTPS Reconnaissance
 
@@ -255,7 +340,7 @@ curl -s -i https://medirozahospital.com/robots.txt
 
 Observed: References to sensitive application paths including /patient/, /staff/, and /old/.
 
-## 8.2 Public Database Backup Evidence
+## 7.2 Public Database Backup Evidence
 
 ### Task 3 — Directory Enumeration
 
@@ -268,7 +353,7 @@ mediroza_db_backup_2019.sql
 
 The database backup contained employee and shareholder information and was accessible without authentication.
 
-## 8.3 Authentication Testing Evidence
+## 7.3 Authentication Testing Evidence
 
 ### Task 4 — Patient Authentication Testing
 
@@ -278,7 +363,7 @@ Observed: SQL-related error disclosure and differential authentication responses
 
 The testing subsequently demonstrated that the authentication mechanism could be bypassed, resulting in an authenticated session.
 
-## 8.4 Patient Portal Evidence
+## 7.4 Patient Portal Evidence
 
 ### Task 5 — Authenticated Portal Review
 
@@ -286,7 +371,7 @@ Following successful authentication testing, the patient portal was accessed usi
 
 Observed: Multiple pathology reports associated with different patients were presented through the portal.
 
-## 8.5 Report Download Evidence
+## 7.5 Report Download Evidence
 
 ### Task 6 — Object-Level Authorization Testing
 
@@ -294,7 +379,7 @@ The report-download functionality was assessed to determine whether access contr
 
 Observed: Multiple report objects could be retrieved through the authenticated test session, demonstrating insufficient object-level authorization.
 
-## 8.6 PDF Security Evidence
+## 7.6 PDF Security Evidence
 
 ### Task 7 — PDF Password Assessment
 
@@ -304,7 +389,7 @@ Observed: The password was recovered rapidly using a common dictionary, demonstr
 
 The recovered password was used only for the authorized assessment and validation of the document-protection finding.
 
-## 8.7 Directory Listing Evidence
+## 7.7 Directory Listing Evidence
 
 ### Task 8 — Sensitive Directory Review
 
@@ -316,7 +401,7 @@ The following paths were reviewed:
 
 Observed: Application files, report functionality, login/logout resources, and a server-side error log were exposed through directory indexing.
 
-## 9. Attack Path Summary
+## 8. Attack Path Summary
 
 The principal attack path identified during the assessment can be summarized as follows:
 
@@ -344,7 +429,7 @@ Confidential Medical Information Exposure
 
 This chain demonstrates how individually addressable weaknesses can combine to create a significantly greater overall security impact.
 
-## 10. Evidence Inventory
+## 9. Evidence Inventory
 Artifact	Purpose	Status
 Database backup	Evidence for Finding 1	Retained securely under engagement controls
 Pathology Report 1	Evidence for report-access testing	Retained securely
@@ -357,7 +442,7 @@ HTTP responses	Reconnaissance and vulnerability evidence	Retained as assessment 
 
 All sensitive evidence should remain within the authorized evidence store and should be securely destroyed according to the engagement's data-retention and client sign-off requirements.
 
-## 11. Note on Sensitive Information
+## 10. Note on Sensitive Information
 
 For privacy and security reasons, sensitive patient, employee, identification, salary, authentication-session, and corporate information should be redacted from publicly distributed copies of this report.
 
