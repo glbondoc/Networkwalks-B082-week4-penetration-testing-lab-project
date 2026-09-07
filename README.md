@@ -308,10 +308,15 @@ last step is to use john the ripper: john --format=PDF report3_hash_signed.txt :
 
 <img width="765" height="240" alt="pdf3 password" src="https://github.com/user-attachments/assets/2055b32c-7374-4a6f-9bf5-8b9e11e33dab" />
 
+
 **Unlocked PDF's**
+
 <img width="1003" height="726" alt="pdf1 unlocked" src="https://github.com/user-attachments/assets/b7932aeb-421d-442e-9a53-6bf3d94733cd" />
+
 <img width="944" height="691" alt="pdf2 unlocked" src="https://github.com/user-attachments/assets/9b18720a-9b28-4eba-8178-d590b0376a32" />
-<img width="944" height="691" alt="pdf2 unlocked" src="https://github.com/user-attachments/assets/9f35c88b-6276-4706-aa9f-f7bacf573457" />
+
+<img width="1011" height="686" alt="pdf3 unlocked" src="https://github.com/user-attachments/assets/91311b23-8295-482c-adf5-dd7e81e1d526" />
+
 
 ---
 # M3
