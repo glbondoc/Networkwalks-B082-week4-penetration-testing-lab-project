@@ -57,7 +57,7 @@ All testing was performed during a single authorized session. Destructive testin
 # 4. Activities Performed
 
 ## 4.1 Reconnaissance & Attack Surface Mapping
-### 4.1 Footprinting & Reconnaissance
+
 I conducted reconnaissance on the networkwalks.com domain using six Kali Linux tools: WHOIS, WhatWeb, Nslookup, Curl, Wafw00f, and DNSRecon. Each tool provided a different set of information that helped build an overall profile of the target.
 <ul>
  <li><strong>WHOIS</strong> — I examined the publicly available domain registration information. The domain is registered through NameCheap, Inc., was created on 2026-08-14, and is scheduled to expire on 2027-08-14. Its most recent update was recorded on 2026-08-14. The domain uses DNS1.NAMECHEAPHOSTING.COM and DNS2.NAMECHEAPHOSTING.COM as its name servers, indicating the use of Namecheap Hosting infrastructure. DNSSEC is currently unsigned, and the domain has the <code>clientTransferProhibited</code> status enabled. No registrant personal information was disclosed in the WHOIS output provided.</li>
@@ -104,53 +104,36 @@ These reconnaissance results established the target's domain, DNS, web, email, a
 
 ---
 
-## 4.2 Authentication & SQL Injection Testing
+# Finding 1: SQL Injection in Patient Portal Authentication                                                                                                                
+Location: POST /patient/login.php, parameter username Class: CWE-89 (SQL Injection) Severity Rating: 🔴 CRITICAL                                                        
+Description                                                                                                                                                             
+The patient login concatenates user input directly into a MySQL query without any parameterization, escaping, or prepared statements. Verbose error messages echo raw mysqli_query() SQL syntax errors back to unauthenticated users, confirming the injection point and leaking database structure.                                                                                                                                                                                                             
 
-The patient authentication endpoint was tested for input-validation weaknesses.
-
-Testing identified verbose SQL error messages when malformed input was supplied to the username parameter. The application response disclosed database-related SQL syntax information, confirming that user-controlled input was being incorporated into a database query without adequate parameterization.
-
-Differential responses also demonstrated that the application distinguished between existing and nonexistent usernames.
-
-Further authorized testing confirmed that the authentication mechanism could be bypassed through SQL injection, resulting in an authenticated application session.
-
-### Security Significance
-
-Authentication controls are intended to ensure that only legitimate users can establish authenticated sessions. A SQL injection vulnerability in the login process can undermine that control entirely.
-
-The issue therefore represents a critical authentication and input-validation weakness.
 <img width="372" height="404" alt="login php sql injection" src="https://github.com/user-attachments/assets/01650d22-a016-4e62-a35e-1fba294f529c" />
 
 **can be access with username: admin'-- -**
 **password: anything**
 
-### Severity
+<img width="1366" height="582" alt="3pdfs" src="https://github.com/user-attachments/assets/05df1a12-0a3e-410e-8b8c-5ef0a1558c8e" />
 
-🔴 **Critical**
+## Finding 2: Unauthorized Access to Restricted Patient Portal (Broken Access Control)                                                                                    
+Location: GET /patient/portal.php (post-authentication) Class: CWE-287 (Improper Authentication), CWE-862 (Missing Authorization) Severity Rating: 🔴 CRITICAL           Description                                                                                                                                                               
+Following the SQL injection bypass, a valid PHP session (PHPSESSID) was issued. The portal then listed all lab reports available to the compromised account with direct download links.                      
 
----
+<img width="1641" height="274" alt="image" src="https://github.com/user-attachments/assets/bc0d25f0-bb69-4e94-ad77-763616a4f1bb" />
 
-## 4.3 Unauthorized Access to the Patient Portal
+# Finding 3: Unauthorized Access to Restricted Patient Portal (Broken Access Control)                                                                                     
+Location: GET /patient/portal.php (post-authentication) Class: CWE-287 (Improper Authentication), CWE-862 (Missing Authorization) Severity Rating: 🔴 CRITICAL          Description                                                                                                                                                              
+Following the SQL injection bypass, a valid PHP session (PHPSESSID) was issued. The portal then listed all lab reports available to the compromised account with direct download links.  
+<img width="1634" height="271" alt="image" src="https://github.com/user-attachments/assets/d9aee5e7-3112-477a-b733-463c6ab5046a" />
 
-Following the authentication weakness identified during testing, an authenticated application session was established.
+# Finding 4: Insecure Direct Object Reference (IDOR) on Report Download                                                                                                  
+Location: GET /patient/download.php?id=<n> Class: CWE-639 (Authorization Bypass Through User-Controlled Key), CWE-22 (Path Traversal — suspected, untested) Severity Rating: 🔴 CRITICAL (confirmed)      
+untested potential for arbitrary file read                                                                                                                                Description                                                                                                                                                               
+Report downloads are keyed by a sequential integer id (1, 2, 3). With a hijacked session, all three reports were retrieved. Sequential IDs mean any patient's report is one URL edit away for any authenticated session. The ?file= parameter also appeared in testing (returned 302 unauthenticated) — path traversal/LFI on this endpoint is a likely follow-up finding. 
+<img width="933" height="291" alt="image" src="https://github.com/user-attachments/assets/867a7c7e-037d-4ac7-9619-5c63aa38a81d" />
 
-The patient portal subsequently displayed multiple pathology reports associated with different patients rather than restricting the authenticated session to a single authorized patient's records.
-
-The portal exposed direct report-download functionality associated with sequential identifiers.
-
-### Security Significance
-
-A patient-facing system should enforce server-side authorization checks to ensure that a user can access only records belonging to that user.
-
-The observed behavior indicates a significant access-control weakness that could allow cross-patient access to confidential medical information.
-
-### Severity
-
-🔴 **Critical**
-
----
-
-## 4.4 PDF Protection & Offline Password Assessment
+## Finding 5: Weak PDF Encryption — Password Recoverable Offline 
 
 One of the retrieved pathology reports was protected using legacy PDF encryption.
 
@@ -163,7 +146,6 @@ After the password was recovered, the PDF was successfully decrypted and its con
 Encryption provides limited protection when the encryption password is weak and easily recoverable.
 
 The weakness is particularly significant because it was combined with the preceding unauthorized file-access issue. Once an encrypted document has been obtained, an easily guessable password can substantially reduce the effectiveness of the document's confidentiality control.
-<img width="1366" height="582" alt="3pdfs" src="https://github.com/user-attachments/assets/05df1a12-0a3e-410e-8b8c-5ef0a1558c8e" />
 
 ### Severity
 
@@ -181,6 +163,48 @@ The overall security posture identified during this assessment is rated **🔴 C
 - The findings should therefore be treated as an **incident-level security concern** rather than isolated configuration issues.
 
 ---
+# M2
+###  Practical Modules
+| | |
+|---|---|
+| **Target files** | `patient_report_1.pdf`, `patient_report_2.pdf`, `patient_report_3.pdf` (password-protected) |
+| **Module 1** | Password Cracking with NetworkWalks' online Hash Calculator & Password Cracker |
+| **Module 2** | Password Cracking with NetworkWalks' online Hash Calculator & John the Ripper |
+| **Attack type** | Dictionary attack |
+
+**Cracked passwords:**
+
+| File | Password |
+|---|---|
+| `patient_report_1.pdf` | `123456` |
+| `patient_report_2.pdf` | `password` |
+| `patient_report_3.pdf` | `!@#$%^&` |
+
+<img width="848" height="239" alt="795252112_1135045865850419_1901597943272309923_n" src="https://github.com/user-attachments/assets/7d861189-9ee1-4e04-a863-545544745909" />
+<img width="875" height="528" alt="797624517_1414435040622012_5465545025558426440_n" src="https://github.com/user-attachments/assets/08a99dc5-9ea6-462b-831e-c1d59f5fd74b" />
+<img width="887" height="497" alt="797752886_1416563100404735_5124007249446300839_n" src="https://github.com/user-attachments/assets/1e68c065-396a-4ef1-bc23-28b735edde92" />
+<img width="876" height="581" alt="796568020_2554561831688686_1699458589611673404_n" src="https://github.com/user-attachments/assets/ec598c57-ae40-44a3-aa55-cf8d0835b237" />
+
+the first two pdf is so easy to cracked the password with the use of networkwalks hashed and input that in networkwalks password cracker.**
+
+<img width="1329" height="721" alt="pdf3 hash" src="https://github.com/user-attachments/assets/ca1c6e1a-0a2a-4818-b0da-9bfd10cbb678" />
+
+1st step is to get the hash of the pdf
+
+<img width="1141" height="76" alt="pdf3hash to file" src="https://github.com/user-attachments/assets/e05f6c01-bc79-493e-964f-a6846e2d1992" />
+
+2nd step is to put the hash into a file and with the hash value: 4294967292 replace it with -4
+formula: 2^32 is equals to 4294967296-4294967292= 4
+command: echo "$pdf$2*3*128*-4*1*32*3261393066326130336634386337323631306164373264323130316137616538*32*5090fa0a5dba99cb97c9d140cd23119428bf4e5e4e758a4164004e56fffa0108*32*58e03d692cf37b50b0b5eaa189fcbd372260a949c8992ad7b44fd13e2b40c1f8" > report3_hash_signed.txt
+
+<img width="1141" height="76" alt="pdf3hash to file" src="https://github.com/user-attachments/assets/bd2fef7d-30ab-4325-acdd-1f9e8100c9aa" />
+
+last step is to use john the ripper: john --format=PDF report3_hash_signed.txt :
+
+<img width="765" height="240" alt="pdf3 password" src="https://github.com/user-attachments/assets/2055b32c-7374-4a6f-9bf5-8b9e11e33dab" />
+
+---
+# M3
 
 # 5. Recommendations
 
